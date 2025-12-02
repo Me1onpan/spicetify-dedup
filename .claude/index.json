@@ -1,0 +1,209 @@
+{
+  "metadata": {
+    "projectName": "spicetify-dedup",
+    "description": "Spotify PC 端歌曲查重插件，防止重复添加相似音乐到歌单",
+    "lastScanned": "2025-12-02T13:36:16+08:00",
+    "scanVersion": "1.0.0",
+    "language": "TypeScript",
+    "framework": "Spicetify Creator"
+  },
+  "scanSummary": {
+    "totalFilesEstimated": 8,
+    "filesScanned": 8,
+    "coveragePercent": 100,
+    "scanDepth": "deep",
+    "truncated": false
+  },
+  "projectStructure": {
+    "rootPath": "D:\\Project\\spicetify-dedup",
+    "modules": [
+      {
+        "name": "root",
+        "path": ".",
+        "type": "project-root",
+        "language": "TypeScript",
+        "documentation": "CLAUDE.md",
+        "priority": "high"
+      },
+      {
+        "name": "src",
+        "path": "src",
+        "type": "source-code",
+        "language": "TypeScript",
+        "entryPoints": ["app.tsx"],
+        "documentation": "src/CLAUDE.md",
+        "priority": "high"
+      },
+      {
+        "name": "types",
+        "path": "src/types",
+        "type": "type-definitions",
+        "language": "TypeScript",
+        "files": ["css-modules.d.ts", "spicetify.d.ts"],
+        "priority": "medium"
+      }
+    ]
+  },
+  "keyFiles": {
+    "configuration": [
+      {
+        "path": "package.json",
+        "type": "package-manifest",
+        "description": "项目依赖和构建脚本",
+        "important": true
+      },
+      {
+        "path": "tsconfig.json",
+        "type": "typescript-config",
+        "description": "TypeScript 编译配置",
+        "important": true
+      },
+      {
+        "path": "src/settings.json",
+        "type": "extension-config",
+        "description": "Spicetify 扩展配置",
+        "important": true
+      },
+      {
+        "path": ".gitignore",
+        "type": "git-ignore",
+        "description": "Git 忽略规则",
+        "important": false
+      }
+    ],
+    "source": [
+      {
+        "path": "src/app.tsx",
+        "type": "entry-point",
+        "description": "扩展主入口文件",
+        "linesOfCode": 11,
+        "important": true
+      }
+    ],
+    "types": [
+      {
+        "path": "src/types/spicetify.d.ts",
+        "type": "type-definition",
+        "description": "Spicetify API 完整类型定义",
+        "linesOfCode": 2354,
+        "important": true
+      },
+      {
+        "path": "src/types/css-modules.d.ts",
+        "type": "type-definition",
+        "description": "CSS Modules 类型支持",
+        "linesOfCode": 10,
+        "important": false
+      }
+    ],
+    "documentation": [
+      {
+        "path": "README.md",
+        "type": "readme",
+        "description": "Spicetify Creator 模板说明",
+        "important": false
+      },
+      {
+        "path": "CLAUDE.md",
+        "type": "ai-context",
+        "description": "项目架构与 AI 上下文",
+        "important": true
+      },
+      {
+        "path": "src/CLAUDE.md",
+        "type": "ai-context",
+        "description": "源代码模块文档",
+        "important": true
+      }
+    ]
+  },
+  "dependencies": {
+    "runtime": {
+      "spicetify": {
+        "description": "由 Spicetify CLI 注入，提供 Spotify API",
+        "source": "external"
+      },
+      "react": {
+        "version": "通过 Spicetify.React 访问",
+        "source": "spicetify"
+      },
+      "reactDOM": {
+        "version": "通过 Spicetify.ReactDOM 访问",
+        "source": "spicetify"
+      }
+    },
+    "devDependencies": {
+      "@types/react": "^19.2.7",
+      "@types/react-dom": "^19.2.3",
+      "spicetify-creator": "^1.0.17"
+    }
+  },
+  "buildSystem": {
+    "tool": "spicetify-creator",
+    "bundler": "esbuild",
+    "scripts": {
+      "build": "spicetify-creator",
+      "build-local": "spicetify-creator --out=dist --minify",
+      "watch": "spicetify-creator --watch"
+    },
+    "outputDir": "dist",
+    "entryPoint": "src/app.tsx"
+  },
+  "ignoredPatterns": {
+    "fromGitignore": [
+      "node_modules/",
+      "*.log",
+      "*.tsbuildinfo",
+      ".cache",
+      ".parcel-cache",
+      ".next",
+      "out",
+      "dist/",
+      "build/"
+    ],
+    "filesIgnored": 0,
+    "largestIgnoredDirs": [
+      "node_modules"
+    ]
+  },
+  "coverageDetails": {
+    "modules": [
+      {
+        "name": "src",
+        "coverage": 100,
+        "gaps": [],
+        "status": "complete"
+      },
+      {
+        "name": "types",
+        "coverage": 100,
+        "gaps": [],
+        "status": "complete"
+      }
+    ],
+    "missingTests": true,
+    "missingDocs": false
+  },
+  "nextSteps": {
+    "recommendations": [
+      "开始实现核心查重逻辑（DeduplicateLogic.ts）",
+      "设计歌曲相似度匹配算法",
+      "实现上下文菜单集成",
+      "添加用户配置界面",
+      "考虑引入测试框架（Jest/Vitest）"
+    ],
+    "priorityAreas": [
+      "src/app.tsx - 从模板代码迁移到实际功能",
+      "新建 src/DeduplicateLogic.ts - 查重核心",
+      "新建 src/SimilarityMatcher.ts - 相似度算法"
+    ]
+  },
+  "technicalNotes": {
+    "projectType": "spicetify-extension",
+    "targetPlatform": "Spotify Desktop (Electron)",
+    "apiSurface": "Spicetify API (全局注入)",
+    "buildOutput": "单个 JS 文件（由 Spicetify 加载）",
+    "developmentMode": "热重载支持（npm run watch）",
+    "deploymentMethod": "Spicetify CLI 自动部署"
+  }
+}
