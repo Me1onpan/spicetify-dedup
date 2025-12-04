@@ -20,6 +20,11 @@ async function main() {
       const stats = LikedSongsManager.getStats();
       Logger.table([stats]);
 
+      // 暴露管理器到全局，便于在 DevTools 中手动测试
+      (window as any).LikedSongsManager = LikedSongsManager;
+      Logger.info('App', '✅ LikedSongsManager 已暴露到全局 (window.LikedSongsManager)');
+      Logger.info('App', '💡 可在 Console 中执行: await LikedSongsManager.loadAllData()');
+
       // 延迟确保 Spotify 完全加载后运行 API 测试（可选）
       // 注释掉以避免重复测试，如需测试请取消注释
       /*
