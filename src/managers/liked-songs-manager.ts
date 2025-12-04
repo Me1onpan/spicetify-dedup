@@ -61,6 +61,20 @@ export class LikedSongsManager {
   private static isLoading = false;
 
   /**
+   * 定时轮询的 interval ID
+   * 用于清理和防止重复启动
+   * @private
+   */
+  private static pollingIntervalId: NodeJS.Timeout | null = null;
+
+  /**
+   * 更新机制是否已初始化
+   * 防止重复初始化导致的多个轮询实例
+   * @private
+   */
+  private static isUpdateMechanismInitialized = false;
+
+  /**
    * 初始化管理器
    *
    * 执行流程：
@@ -236,6 +250,12 @@ export class LikedSongsManager {
    * ```
    */
   static async reloadAll(): Promise<void> {
+    // 防止并发重新加载
+    if (this.isLoading) {
+      Logger.info("LikedSongsManager", "⚠️ 正在加载中，跳过重复的 reloadAll 请求");
+      return;
+    }
+
     Logger.info("LikedSongsManager", "清空缓存并重新加载全部数据...");
 
     try {
@@ -474,6 +494,11 @@ export class LikedSongsManager {
       this.cache.total = newTotal;
 
       // 遍历首批数据，查找新增歌曲
+      // 注意：此处假设所有新添加的喜欢的歌曲都会出现在列表的开头（offset=0），
+      // 即 Spotify API 返回的 items 按添加时间倒序排列（最新的在前）。
+      // 如果 API 行为改变（例如改为正序或其他排序方式），此逻辑需要调整。
+      // 当前实现的限制：如果用户添加的歌曲不在首批数据中（例如批量导入旧歌曲），
+      // 这些歌曲可能不会被立即检测到，需要等待完整加载或手动触发 loadAllData()。
       const newTracks: LikedSongItem[] = [];
       for (const item of firstBatch.items) {
         if (!this.cache.tracks.has(item.uri)) {
@@ -542,6 +567,12 @@ export class LikedSongsManager {
    * @private
    */
   private static startPolling(): void {
+    // 防止重复启动轮询
+    if (this.pollingIntervalId !== null) {
+      Logger.info("LikedSongsManager", "⚠️ 定时轮询已在运行，跳过重复启动");
+      return;
+    }
+
     const interval = LIKED_SONGS_API_CONFIG.cache.updateInterval;
 
     Logger.debug(
@@ -549,10 +580,34 @@ export class LikedSongsManager {
       `启动定时轮询（间隔: ${interval / 1000} 秒）`
     );
 
-    setInterval(async () => {
+    this.pollingIntervalId = setInterval(async () => {
       Logger.debug("LikedSongsManager", "定时轮询触发");
       await this.updateIncremental();
     }, interval);
+  }
+
+  /**
+   * 停止定时轮询
+   *
+   * 清理定时器，防止内存泄漏
+   * 主要用于测试或需要重新初始化的场景
+   *
+   * @internal 此方法主要用于开发调试和测试
+   *
+   * @example
+   * ```typescript
+   * // 在 DevTools Console 中执行
+   * LikedSongsManager.stopPolling();
+   * ```
+   */
+  static stopPolling(): void {
+    if (this.pollingIntervalId !== null) {
+      clearInterval(this.pollingIntervalId);
+      this.pollingIntervalId = null;
+      Logger.info("LikedSongsManager", "定时轮询已停止");
+    } else {
+      Logger.debug("LikedSongsManager", "定时轮询未运行，无需停止");
+    }
   }
 
   /**
@@ -596,7 +651,10 @@ export class LikedSongsManager {
       "⚠️ 暂无可用的事件监听 API，仅使用定时轮询"
     );
 
-    // 可选：尝试监听 songchange 作为备选方案（不保证可靠性）
+    // 注意：以下是实验性的事件监听代码，已被注释掉
+    // 原因：songchange 事件无法直接检测喜欢操作，可靠性不足
+    // 如果需要启用实验性功能，请取消注释以下代码块
+    //
     // try {
     //   Spicetify.Player.addEventListener('songchange', async () => {
     //     if (this.shouldCheckUpdate()) {
@@ -620,6 +678,15 @@ export class LikedSongsManager {
    * @private
    */
   private static initUpdateMechanism(): void {
+    // 防止重复初始化
+    if (this.isUpdateMechanismInitialized) {
+      Logger.info(
+        "LikedSongsManager",
+        "⚠️ 更新机制已初始化，跳过重复初始化"
+      );
+      return;
+    }
+
     Logger.info(
       "LikedSongsManager",
       "初始化更新机制（事件监听 + 定时轮询）"
@@ -638,5 +705,8 @@ export class LikedSongsManager {
         error
       );
     }
+
+    // 标记为已初始化
+    this.isUpdateMechanismInitialized = true;
   }
 }

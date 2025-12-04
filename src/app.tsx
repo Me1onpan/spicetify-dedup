@@ -20,6 +20,12 @@ async function main() {
       const stats = LikedSongsManager.getStats();
       Logger.table([stats]);
 
+      // ⚠️ 开发模式警告：暴露管理器到全局
+      // 注意：此功能仅用于开发和调试，不应在生产环境中启用
+      // 确保在发布前将 DEBUG_MODE 设置为 false
+      Logger.info('App', '⚠️ 开发模式已启用 - 仅用于开发和调试');
+      Logger.info('App', '⚠️ 发布前请确保 DEBUG_MODE = false');
+
       // 暴露管理器到全局，便于在 DevTools 中手动测试
       (window as any).LikedSongsManager = LikedSongsManager;
       Logger.info('App', '✅ LikedSongsManager 已暴露到全局 (window.LikedSongsManager)');
