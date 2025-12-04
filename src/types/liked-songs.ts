@@ -1,12 +1,19 @@
 /**
- * LikedSongs 数据模型
+ * @file liked-songs.ts
+ * @description LikedSongs 功能的 TypeScript 类型定义
+ * @version 1.0.0
+ * @date 2025-12-04
  *
- * 基于 Spicetify.Platform.LibraryAPI 的响应结构设计
- * 用于查重功能的类型定义
+ * 本文件定义了 LikedSongs 功能所需的完整类型系统：
+ * - 5 个类型别名 (Type Aliases): ISODateString, UnixTimestamp, TrackURI, ArtistURI, AlbumURI
+ * - 6 个核心接口 (Core Interfaces): LikedSongArtist, LikedSongAlbum, LikedSongItem, LikedSongsResponse, LikedSongsCache, UpdateStrategyConfig
+ * - 3 个辅助接口 (Helper Interfaces): PaginationParams, DuplicateCheckResult, CacheStats
  *
+ * 基于 Spicetify.Platform.LibraryAPI 的响应结构设计，用于查重功能的类型定义。
+ *
+ * @see 规划文档: .claude/plan/likedsongs-feature-1.md (阶段 2.1)
+ * @see API 测试报告: .claude/plan/api-test-results.md
  * @see ADR-001: LikedSongs API 选型
- * @see .claude/plan/api-test-results.md
- * @see .claude/plan/likedsongs-feature-1.md (阶段 2.1)
  */
 
 // ============================================================================
@@ -201,13 +208,3 @@ export interface CacheStats {
 	/** 是否已完整加载 */
 	isFullyLoaded: boolean;
 }
-
-/**
- * @file liked-songs.ts
- * @description LikedSongs 功能的 TypeScript 类型定义
- * @version 1.0.0
- * @date 2025-12-04
- *
- * @see 规划文档: .claude/plan/likedsongs-feature-1.md (阶段 2.1)
- * @see API 测试报告: .claude/plan/api-test-results.md
- */
