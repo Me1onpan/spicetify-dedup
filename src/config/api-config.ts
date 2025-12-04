@@ -23,7 +23,7 @@ export const LIKED_SONGS_API_CONFIG = {
    * 选定的 API 类型
    * 使用 Spicetify.Platform.LibraryAPI.getTracks() 获取 LikedSongs 数据
    */
-  apiType: 'Platform.LibraryAPI' as const,
+  apiType: "Platform.LibraryAPI" as const,
 
   /**
    * 分页配置
@@ -32,7 +32,7 @@ export const LIKED_SONGS_API_CONFIG = {
    */
   pagination: {
     defaultLimit: 50,
-    maxLimit: 100
+    maxLimit: 100,
   },
 
   /**
@@ -42,7 +42,7 @@ export const LIKED_SONGS_API_CONFIG = {
    */
   cache: {
     updateInterval: 3 * 60 * 1000, // 3 分钟
-    enableEventListener: true
+    enableEventListener: true,
   },
 
   /**
@@ -51,7 +51,7 @@ export const LIKED_SONGS_API_CONFIG = {
    */
   fallback: {
     enabled: true,
-    apiType: 'Web API' as const,
-    endpoint: 'https://api.spotify.com/v1/me/tracks'
-  }
+    apiType: "Web API" as const,
+    endpoint: "https://api.spotify.com/v1/me/tracks",
+  },
 } as const;
