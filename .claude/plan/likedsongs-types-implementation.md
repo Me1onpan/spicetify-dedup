@@ -13,7 +13,7 @@
 ### 目标
 
 - 创建 `src/types/liked-songs.ts` 文件
-- 定义 6 个核心类型接口
+- 定义完整的类型系统（5 个类型别名 + 6 个核心接口 + 3 个辅助接口）
 - 使用 Map 结构优化缓存查询性能
 - 添加完整的 JSDoc 注释
 
@@ -69,11 +69,12 @@
 ## 验收标准
 
 - [x] 文件创建成功
-- [x] 6 个类型接口定义完整
+- [x] 14 个类型定义完整（5 个类型别名 + 6 个核心接口 + 3 个辅助接口）
 - [x] 每个字段都有 JSDoc 注释
 - [x] 使用 Map 结构优化缓存
 - [x] TypeScript 编译无错误
 - [x] 符合 strict mode
+- [x] 文件级 JSDoc 注释位于文件开头
 
 ---
 
@@ -81,7 +82,14 @@
 
 **文件**: `src/types/liked-songs.ts`
 
-**类型列表**:
+**类型别名** (5 个):
+1. ISODateString
+2. UnixTimestamp
+3. TrackURI
+4. ArtistURI
+5. AlbumURI
+
+**核心接口** (6 个):
 1. LikedSongArtist
 2. LikedSongAlbum
 3. LikedSongItem
@@ -89,7 +97,13 @@
 5. LikedSongsCache
 6. UpdateStrategyConfig
 
-**代码行数**: 约 80-100 行（含注释）
+**辅助接口** (3 个):
+1. PaginationParams
+2. DuplicateCheckResult
+3. CacheStats
+
+**代码行数**: 约 210 行（含注释）
+> 注：实际行数超出初始估算（80-100 行），原因是添加了更详细的 JSDoc 注释、类型别名和辅助接口，以提供更完整的类型系统支持。
 
 ---
 
