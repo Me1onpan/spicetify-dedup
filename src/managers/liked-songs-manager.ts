@@ -74,7 +74,7 @@ export class LikedSongsManager {
   static async initialize(): Promise<void> {
     // 防止并发初始化
     if (this.isLoading) {
-      Logger.warn("LikedSongsManager", "初始化已在进行中，跳过重复调用");
+      Logger.info("LikedSongsManager", "初始化已在进行中，跳过重复调用");
       return;
     }
 
