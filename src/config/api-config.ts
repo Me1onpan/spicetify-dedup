@@ -46,6 +46,16 @@ export const LIKED_SONGS_API_CONFIG = {
   },
 
   /**
+   * 性能控制配置
+   * - batchLoadDelay: 分页加载间隔（毫秒），避免触发 API 限流
+   * - debounceInterval: 防抖间隔（毫秒），避免事件监听器频繁触发
+   */
+  performance: {
+    batchLoadDelay: 500, // 500ms
+    debounceInterval: 5000, // 5 秒
+  },
+
+  /**
    * 降级方案配置
    * 如果 Platform.LibraryAPI 不可用，可降级到 Spotify Web API
    */

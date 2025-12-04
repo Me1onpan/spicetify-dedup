@@ -222,6 +222,53 @@ export class LikedSongsManager {
   }
 
   /**
+   * 清空缓存并重新加载全部数据
+   *
+   * 用于调试或强制刷新数据
+   * 会清空当前缓存，重新初始化并加载全部 LikedSongs
+   *
+   * @internal 此方法主要用于开发调试
+   *
+   * @example
+   * ```typescript
+   * // 在 DevTools Console 中执行
+   * await LikedSongsManager.reloadAll();
+   * ```
+   */
+  static async reloadAll(): Promise<void> {
+    Logger.info("LikedSongsManager", "清空缓存并重新加载全部数据...");
+
+    try {
+      // 清空缓存
+      this.cache.tracks.clear();
+      this.cache.total = 0;
+      this.cache.lastUpdated = 0;
+      this.cache.isFullyLoaded = false;
+
+      Logger.debug("LikedSongsManager", "缓存已清空");
+
+      // 重新初始化（加载首批数据）
+      await this.loadInitialData();
+
+      Logger.info(
+        "LikedSongsManager",
+        `重新初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首`
+      );
+
+      // 加载全部数据
+      await this.loadAllData();
+
+      Logger.info(
+        "LikedSongsManager",
+        `✅ 重新加载完成！共 ${this.cache.tracks.size} 首歌曲`
+      );
+    } catch (error) {
+      Logger.error("LikedSongsManager", "重新加载失败", error);
+      throw error;
+    }
+  }
+
+  /**
    * 检查歌曲是否在 LikedSongs 中
    *
    * 使用 Map 结构实现 O(1) 时间复杂度的快速查询
@@ -272,17 +319,324 @@ export class LikedSongsManager {
   }
 
   /**
+   * 加载全部数据（分页加载）
+   *
+   * 从当前缓存大小继续加载，直到加载完所有 LikedSongs
+   * 支持断点续传：如果中途中断，下次调用会从上次停止的位置继续
+   *
+   * 性能优化：
+   * - 每批加载后等待 500ms，避免触发 API 限流
+   * - 使用 Map 结构存储，O(1) 时间复杂度查询
+   *
+   * @throws {Error} 如果 API 调用失败
+   *
+   * @example
+   * ```typescript
+   * // 加载全部 LikedSongs
+   * await LikedSongsManager.loadAllData();
+   * console.log(`已加载 ${LikedSongsManager.getStats().loaded} 首歌曲`);
+   * ```
+   */
+  static async loadAllData(): Promise<void> {
+    // 防止并发加载
+    if (this.isLoading) {
+      Logger.debug("LikedSongsManager", "正在加载中，跳过重复请求");
+      return;
+    }
+
+    this.isLoading = true;
+    Logger.info("LikedSongsManager", "开始加载全部数据...");
+
+    try {
+      const { defaultLimit } = LIKED_SONGS_API_CONFIG.pagination;
+      let offset = this.cache.tracks.size; // 从已加载位置继续（断点续传）
+      const total = this.cache.total;
+
+      // 如果已经全部加载，直接返回
+      if (offset >= total) {
+        Logger.info("LikedSongsManager", "数据已全部加载，无需重复加载");
+        this.cache.isFullyLoaded = true;
+        return;
+      }
+
+      Logger.debug(
+        "LikedSongsManager",
+        `从 offset=${offset} 继续加载，目标总数=${total}`
+      );
+
+      // 循环加载直到全部完成
+      while (offset < total) {
+        const batch = await this.fetchLikedSongs(offset, defaultLimit);
+
+        // 将数据存入缓存
+        batch.items.forEach((item) => {
+          this.cache.tracks.set(item.uri, item);
+        });
+
+        offset += batch.items.length;
+
+        // 输出加载进度
+        Logger.debug(
+          "LikedSongsManager",
+          `加载进度: ${offset}/${total} (${((offset / total) * 100).toFixed(1)}%)`
+        );
+
+        // 间隔配置的延迟时间，避免频繁请求触发限流
+        if (offset < total) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, LIKED_SONGS_API_CONFIG.performance.batchLoadDelay)
+          );
+        }
+      }
+
+      // 标记为已完全加载
+      this.cache.isFullyLoaded = true;
+      this.cache.lastUpdated = Date.now();
+
+      Logger.info(
+        "LikedSongsManager",
+        `全部数据加载完成: ${this.cache.tracks.size} 首`
+      );
+    } catch (error) {
+      Logger.error("LikedSongsManager", "加载全部数据失败", error);
+      throw error;
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  /**
+   * 增量更新（仅加载新增歌曲）
+   *
+   * 通过对比 total 判断是否有新增歌曲
+   * 如果有新增，只加载首批数据并检测新增项
+   *
+   * 性能优化：
+   * - 仅加载首批数据（默认 50 首），不加载全部
+   * - 使用 Map.has() 快速检测新增（O(1) 时间复杂度）
+   * - 如果新增数量超过首批大小，自动触发完整加载
+   *
+   * @example
+   * ```typescript
+   * // 检查并加载新增歌曲
+   * await LikedSongsManager.updateIncremental();
+   * ```
+   */
+  static async updateIncremental(): Promise<void> {
+    Logger.debug("LikedSongsManager", "开始增量更新...");
+
+    try {
+      // 获取最新的首批数据
+      const firstBatch = await this.fetchLikedSongs(
+        0,
+        LIKED_SONGS_API_CONFIG.pagination.defaultLimit
+      );
+
+      const currentTotal = this.cache.total;
+      const newTotal = firstBatch.total;
+
+      // 如果总数没变，说明没有变化
+      if (newTotal === currentTotal) {
+        Logger.debug("LikedSongsManager", "无变化");
+        return;
+      }
+
+      // 处理歌曲数量减少的情况（用户取消喜欢）
+      if (newTotal < currentTotal) {
+        Logger.info(
+          "LikedSongsManager",
+          `检测到歌曲减少: ${currentTotal - newTotal} 首，触发完整重新加载以同步删除...`
+        );
+        // 清空缓存并重新加载全部数据，确保数据一致性
+        await this.reloadAll();
+        return;
+      }
+
+      // 处理歌曲数量增加的情况
+      const addedCount = newTotal - currentTotal;
+      Logger.info(
+        "LikedSongsManager",
+        `检测到新增歌曲: ${addedCount} 首`
+      );
+
+      // 如果新增数量超过首批大小，触发完整加载
+      if (addedCount > LIKED_SONGS_API_CONFIG.pagination.defaultLimit) {
+        Logger.info(
+          "LikedSongsManager",
+          `新增歌曲较多 (${addedCount} 首)，触发完整加载以确保数据完整性...`
+        );
+        this.cache.total = newTotal;
+        await this.loadAllData();
+        return;
+      }
+
+      // 更新总数
+      this.cache.total = newTotal;
+
+      // 遍历首批数据，查找新增歌曲
+      const newTracks: LikedSongItem[] = [];
+      for (const item of firstBatch.items) {
+        if (!this.cache.tracks.has(item.uri)) {
+          newTracks.push(item);
+          this.cache.tracks.set(item.uri, item);
+        }
+      }
+
+      this.cache.lastUpdated = Date.now();
+
+      if (newTracks.length > 0) {
+        Logger.info(
+          "LikedSongsManager",
+          `增量更新完成: 新增 ${newTracks.length} 首`
+        );
+
+        // 开发模式下显示新增歌曲列表
+        if (DEBUG_MODE) {
+          Logger.debug(
+            "LikedSongsManager",
+            "新增歌曲:",
+            newTracks.map((t) => `${t.name} - ${t.artists[0]?.name}`)
+          );
+        }
+      }
+    } catch (error) {
+      Logger.error("LikedSongsManager", "增量更新失败", error);
+      // 不抛出错误，避免影响定时轮询
+    }
+  }
+
+  /**
+   * 最后一次检查更新的时间戳
+   * 用于防抖机制，避免频繁触发更新
+   * @private
+   */
+  private static lastCheckTime = 0;
+
+  /**
+   * 判断是否应该检查更新
+   *
+   * 防抖机制：使用配置的防抖间隔
+   * 避免事件监听器频繁触发导致的性能问题
+   *
+   * @returns 如果距离上次检查超过防抖间隔，返回 true
+   * @private
+   */
+  private static shouldCheckUpdate(): boolean {
+    const now = Date.now();
+    const minInterval = LIKED_SONGS_API_CONFIG.performance.debounceInterval;
+
+    if (now - this.lastCheckTime < minInterval) {
+      return false;
+    }
+
+    this.lastCheckTime = now;
+    return true;
+  }
+
+  /**
+   * 启动定时轮询
+   *
+   * 每 3 分钟自动触发一次增量更新
+   * 这是更新机制的基础保障，确保数据最终一致性
+   *
+   * @private
+   */
+  private static startPolling(): void {
+    const interval = LIKED_SONGS_API_CONFIG.cache.updateInterval;
+
+    Logger.debug(
+      "LikedSongsManager",
+      `启动定时轮询（间隔: ${interval / 1000} 秒）`
+    );
+
+    setInterval(async () => {
+      Logger.debug("LikedSongsManager", "定时轮询触发");
+      await this.updateIncremental();
+    }, interval);
+  }
+
+  /**
+   * 尝试设置事件监听（增强功能）
+   *
+   * 根据 Spicetify API 分析结果：
+   * - Player.songchange: 歌曲变更时触发，但无法直接检测喜欢操作
+   * - Platform.LibraryAPI.events: API 中未找到相关事件
+   *
+   * TODO: Spicetify API 暂无合适的 like/unlike 事件
+   * 已尝试的方案：
+   * - Player.songchange: 无法直接检测喜欢操作
+   * - Platform.LibraryAPI.events: API 中未找到相关事件
+   *
+   * 后续可能的方案：
+   * 1. 监听 DOM 变化（hack 方案，不稳定）
+   * 2. 等待 Spicetify 更新提供相关事件
+   * 3. 使用更短的轮询间隔作为替代
+   *
+   * @private
+   */
+  private static setupEventListeners(): void {
+    if (!LIKED_SONGS_API_CONFIG.cache.enableEventListener) {
+      Logger.debug("LikedSongsManager", "事件监听已禁用");
+      return;
+    }
+
+    Logger.debug("LikedSongsManager", "尝试设置事件监听...");
+
+    // TODO: 暂无可用的事件监听 API
+    // 经过分析 spicetify.d.ts (第 300-330 行)，发现：
+    // - songchange: 歌曲变更时触发（无法直接检测喜欢操作）
+    // - onplaypause: 播放/暂停时触发（与喜欢操作无关）
+    // - onprogress: 进度变化时触发（与喜欢操作无关）
+    // - appchange: 页面切换时触发（与喜欢操作无关）
+    //
+    // Platform.LibraryAPI 中也未找到相关的事件监听接口
+
+    Logger.debug(
+      "LikedSongsManager",
+      "⚠️ 暂无可用的事件监听 API，仅使用定时轮询"
+    );
+
+    // 可选：尝试监听 songchange 作为备选方案（不保证可靠性）
+    // try {
+    //   Spicetify.Player.addEventListener('songchange', async () => {
+    //     if (this.shouldCheckUpdate()) {
+    //       Logger.debug('LikedSongsManager', '歌曲变更事件触发，检查更新');
+    //       await this.updateIncremental();
+    //     }
+    //   });
+    //   Logger.debug('LikedSongsManager', '✅ 已注册 songchange 事件监听（实验性）');
+    // } catch (error) {
+    //   Logger.debug('LikedSongsManager', 'songchange 事件监听失败', error);
+    // }
+  }
+
+  /**
    * 初始化更新机制
    *
-   * 占位方法，将在阶段 4 实现以下功能：
-   * - 定时轮询（每 3 分钟检查更新）
-   * - 事件监听（监听歌曲添加/删除事件）
-   * - 增量更新（仅加载新增歌曲）
+   * 混合策略：定时轮询 + 事件监听
+   * - 定时轮询：基础保障，每 3 分钟检查一次（必定启动）
+   * - 事件监听：可选增强，失败不影响核心功能（当前标记为 TODO）
    *
    * @private
    */
   private static initUpdateMechanism(): void {
-    Logger.debug("LikedSongsManager", "更新机制将在阶段 4 实现");
-    // TODO: 阶段 4 - 实现定时轮询和事件监听
+    Logger.info(
+      "LikedSongsManager",
+      "初始化更新机制（事件监听 + 定时轮询）"
+    );
+
+    // 1. 启动定时轮询（基础保障）
+    this.startPolling();
+
+    // 2. 尝试事件监听（可选增强）
+    try {
+      this.setupEventListeners();
+    } catch (error) {
+      Logger.error(
+        "LikedSongsManager",
+        "事件监听初始化失败，仅使用定时轮询",
+        error
+      );
+    }
   }
 }
