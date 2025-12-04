@@ -29,10 +29,20 @@ import type {
 /**
  * LikedSongs 管理器
  *
- * 单例模式，全局唯一实例
+ * 单例模式（静态类），全局唯一实例
  * 负责 LikedSongs 数据的获取、缓存和查询
+ *
+ * @remarks 此类不应被实例化，所有方法均为静态方法
  */
 export class LikedSongsManager {
+  /**
+   * 私有构造函数，防止实例化
+   * @throws {Error} 如果尝试实例化此类
+   */
+  private constructor() {
+    throw new Error("LikedSongsManager 不能被实例化，请使用静态方法");
+  }
+
   /**
    * 缓存对象
    * 使用 Map 结构优化查询性能（O(1) 时间复杂度）
@@ -54,19 +64,35 @@ export class LikedSongsManager {
    * 初始化管理器
    *
    * 执行流程：
-   * 1. 加载首批数据（50 首）
-   * 2. 启动更新机制（定时轮询 + 事件监听）
-   * 3. 显示加载完成通知
+   * 1. 检查是否已初始化或正在初始化
+   * 2. 加载首批数据（50 首）
+   * 3. 启动更新机制（定时轮询 + 事件监听）
+   * 4. 显示加载完成通知
    *
    * @throws {Error} 如果 Spicetify.Platform.LibraryAPI 不可用
    */
   static async initialize(): Promise<void> {
+    // 防止并发初始化
+    if (this.isLoading) {
+      Logger.warn("LikedSongsManager", "初始化已在进行中，跳过重复调用");
+      return;
+    }
+
+    // 检查是否已初始化
+    if (this.cache.tracks.size > 0) {
+      Logger.info("LikedSongsManager", "管理器已初始化，跳过重复初始化");
+      return;
+    }
+
+    this.isLoading = true;
     Logger.info("LikedSongsManager", "正在初始化...");
 
     try {
       // 检查 API 可用性
       if (!Spicetify.Platform?.LibraryAPI) {
-        throw new Error("Spicetify.Platform.LibraryAPI 不可用");
+        throw new Error(
+          "Spicetify.Platform.LibraryAPI 不可用。请确保 Spicetify 已正确安装并完全加载。"
+        );
       }
 
       // 首次加载数据
@@ -89,6 +115,8 @@ export class LikedSongsManager {
     } catch (error) {
       Logger.error("LikedSongsManager", "初始化失败", error);
       throw error;
+    } finally {
+      this.isLoading = false;
     }
   }
 
