@@ -8,12 +8,14 @@
 export const DEBUG_MODE = true; // 发布时改为 false
 
 export class Logger {
+  private static readonly PREFIX = "[Spicetify-Dedup]";
+
   /**
    * 开发模式日志（仅在 DEBUG_MODE 为 true 时输出）
    */
   static debug(module: string, message: string, ...args: any[]) {
     if (DEBUG_MODE) {
-      console.log(`[${module}] ${message}`, ...args);
+      console.log(`${this.PREFIX} [DEBUG] [${module}] ${message}`, ...args);
     }
   }
 
@@ -21,14 +23,21 @@ export class Logger {
    * 信息日志（始终输出）
    */
   static info(module: string, message: string, ...args: any[]) {
-    console.info(`[${module}] ${message}`, ...args);
+    console.info(`${this.PREFIX} [INFO] [${module}] ${message}`, ...args);
+  }
+
+  /**
+   * 警告日志（始终输出）
+   */
+  static warn(module: string, message: string, ...args: any[]) {
+    console.warn(`${this.PREFIX} [WARN] [${module}] ${message}`, ...args);
   }
 
   /**
    * 错误日志（始终输出）
    */
   static error(module: string, message: string, error?: any) {
-    console.error(`[${module}] ${message}`, error);
+    console.error(`${this.PREFIX} [ERROR] [${module}] ${message}`, error);
   }
 
   /**
@@ -36,16 +45,42 @@ export class Logger {
    */
   static perf(module: string, action: string, duration: number) {
     if (DEBUG_MODE) {
-      console.log(`[${module}] ⚡ ${action} 耗时: ${duration.toFixed(2)}ms`);
+      const emoji = duration < 100 ? "⚡" : duration < 500 ? "🚀" : "🐢";
+      console.log(`${this.PREFIX} [PERF] [${module}] ${emoji} ${action} 耗时: ${duration.toFixed(2)}ms`);
     }
   }
 
   /**
-   * 表格形式展示测试结果
+   * 表格形式展示数据
    */
   static table(data: any[]) {
     if (DEBUG_MODE) {
+      console.log(`${this.PREFIX} [TABLE]`);
       console.table(data);
+    }
+  }
+
+  /**
+   * 分组日志（方便折叠查看）
+   */
+  static group(title: string, fn: () => void) {
+    if (DEBUG_MODE) {
+      console.group(`${this.PREFIX} ${title}`);
+      fn();
+      console.groupEnd();
+    }
+  }
+
+  /**
+   * 统计信息展示
+   */
+  static stats(module: string, stats: Record<string, any>) {
+    if (DEBUG_MODE) {
+      this.group(`[${module}] 统计信息`, () => {
+        Object.entries(stats).forEach(([key, value]) => {
+          console.log(`  ${key}: ${value}`);
+        });
+      });
     }
   }
 }

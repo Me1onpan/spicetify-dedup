@@ -18,13 +18,9 @@
  */
 
 import { Logger, DEBUG_MODE } from "../utils/logger";
+import { RetryHelper } from "../utils/retry-helper";
 import { LIKED_SONGS_API_CONFIG } from "../config/api-config";
-import type {
-  LikedSongsCache,
-  LikedSongItem,
-  LikedSongsResponse,
-  CacheStats,
-} from "../types/liked-songs";
+import type { LikedSongsCache, LikedSongItem, LikedSongsResponse, CacheStats } from "../types/liked-songs";
 
 /**
  * LikedSongs 管理器
@@ -65,7 +61,7 @@ export class LikedSongsManager {
    * 用于清理和防止重复启动
    * @private
    */
-  private static pollingIntervalId: NodeJS.Timeout | null = null;
+  private static pollingIntervalId: ReturnType<typeof setInterval> | null = null;
 
   /**
    * 更新机制是否已初始化
@@ -104,9 +100,7 @@ export class LikedSongsManager {
     try {
       // 检查 API 可用性
       if (!Spicetify.Platform?.LibraryAPI) {
-        throw new Error(
-          "Spicetify.Platform.LibraryAPI 不可用。请确保 Spicetify 已正确安装并完全加载。"
-        );
+        throw new Error("Spicetify.Platform.LibraryAPI 不可用。请确保 Spicetify 已正确安装并完全加载。");
       }
 
       // 首次加载数据
@@ -115,16 +109,11 @@ export class LikedSongsManager {
       // 启动更新机制（阶段 4 实现）
       this.initUpdateMechanism();
 
-      Logger.info(
-        "LikedSongsManager",
-        `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲`
-      );
+      Logger.info("LikedSongsManager", `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲`);
 
       // 生产模式下显示通知
       if (!DEBUG_MODE) {
-        Spicetify.showNotification(
-          `LikedSongs 已加载 (${this.cache.total} 首)`
-        );
+        Spicetify.showNotification(`LikedSongs 已加载 (${this.cache.total} 首)`);
       }
     } catch (error) {
       Logger.error("LikedSongsManager", "初始化失败", error);
@@ -145,10 +134,7 @@ export class LikedSongsManager {
   private static async loadInitialData(): Promise<void> {
     Logger.debug("LikedSongsManager", "开始首次加载...");
 
-    const firstBatch = await this.fetchLikedSongs(
-      0,
-      LIKED_SONGS_API_CONFIG.pagination.defaultLimit
-    );
+    const firstBatch = await this.fetchLikedSongs(0, LIKED_SONGS_API_CONFIG.pagination.defaultLimit);
 
     // 更新缓存
     this.cache.total = firstBatch.total;
@@ -158,81 +144,76 @@ export class LikedSongsManager {
 
     this.cache.lastUpdated = Date.now();
 
-    Logger.debug(
-      "LikedSongsManager",
-      `首批加载完成: ${firstBatch.items.length}/${firstBatch.total} 首`
-    );
+    Logger.debug("LikedSongsManager", `首批加载完成: ${firstBatch.items.length}/${firstBatch.total} 首`);
   }
 
   /**
    * 获取 LikedSongs 数据
    *
    * 使用 Spicetify.Platform.LibraryAPI.getTracks() 获取数据
-   * 包含性能测试和错误处理
+   * 包含性能测试、错误处理和自动重试机制
    *
    * @param offset - 偏移量（从第几首开始）
    * @param limit - 每页数量
    * @returns LikedSongs 响应数据
-   * @throws {Error} 如果 API 调用失败
+   * @throws {Error} 如果 API 调用失败（重试 3 次后仍失败）
    * @private
    */
-  private static async fetchLikedSongs(
-    offset: number,
-    limit: number
-  ): Promise<LikedSongsResponse> {
-    const startTime = performance.now();
+  private static async fetchLikedSongs(offset: number, limit: number): Promise<LikedSongsResponse> {
+    return RetryHelper.withRetry(
+      async () => {
+        const startTime = performance.now();
 
-    try {
-      Logger.debug(
-        "LikedSongsManager",
-        `正在获取数据 (offset=${offset}, limit=${limit})...`
-      );
+        try {
+          Logger.debug("LikedSongsManager", `正在获取数据 (offset=${offset}, limit=${limit})...`);
 
-      // 调用 Platform.LibraryAPI
-      const response = await Spicetify.Platform.LibraryAPI.getTracks({
-        offset,
-        limit,
-      });
+          // 调用 Platform.LibraryAPI
+          const response = await Spicetify.Platform.LibraryAPI.getTracks({
+            offset,
+            limit,
+          });
 
-      const duration = performance.now() - startTime;
-      Logger.perf("LikedSongsManager", `获取数据 (offset=${offset})`, duration);
+          const duration = performance.now() - startTime;
+          Logger.perf("LikedSongsManager", `获取数据 (offset=${offset})`, duration);
 
-      // 转换为标准格式
-      const formattedResponse: LikedSongsResponse = {
-        items: response.items.map((item: any) => ({
-          uri: item.uri,
-          name: item.name,
-          artists: item.artists.map((artist: any) => ({
-            name: artist.name,
-            uri: artist.uri,
-          })),
-          album: {
-            name: item.album.name,
-            uri: item.album.uri,
-          },
-          addedAt: item.addedAt,
-          duration: item.duration,
-        })),
-        total: response.totalLength || response.unfilteredTotalLength || 0,
-        offset,
-        limit,
-      };
+          // 转换为标准格式
+          const formattedResponse: LikedSongsResponse = {
+            items: response.items.map((item: any) => ({
+              uri: item.uri,
+              name: item.name,
+              artists: item.artists.map((artist: any) => ({
+                name: artist.name,
+                uri: artist.uri,
+              })),
+              album: {
+                name: item.album.name,
+                uri: item.album.uri,
+              },
+              addedAt: item.addedAt,
+              duration: item.duration,
+            })),
+            total: response.totalLength || response.unfilteredTotalLength || 0,
+            offset,
+            limit,
+          };
 
-      Logger.debug(
-        "LikedSongsManager",
-        `数据获取成功: ${formattedResponse.items.length} 首`
-      );
+          Logger.debug("LikedSongsManager", `数据获取成功: ${formattedResponse.items.length} 首`);
 
-      return formattedResponse;
-    } catch (error) {
-      const duration = performance.now() - startTime;
-      Logger.error(
-        "LikedSongsManager",
-        `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`,
-        error
-      );
-      throw error;
-    }
+          return formattedResponse;
+        } catch (error) {
+          const duration = performance.now() - startTime;
+          Logger.error("LikedSongsManager", `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`, error);
+          throw error;
+        }
+      },
+      {
+        maxRetries: 3,
+        delay: 2000,
+        onRetry: (attempt, error) => {
+          Logger.warn("LikedSongsManager", `数据获取失败 (offset=${offset}),正在重试...`, error);
+        },
+      }
+    );
   }
 
   /**
@@ -270,18 +251,12 @@ export class LikedSongsManager {
       // 重新初始化（加载首批数据）
       await this.loadInitialData();
 
-      Logger.info(
-        "LikedSongsManager",
-        `重新初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首`
-      );
+      Logger.info("LikedSongsManager", `重新初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首`);
 
       // 加载全部数据
       await this.loadAllData();
 
-      Logger.info(
-        "LikedSongsManager",
-        `✅ 重新加载完成！共 ${this.cache.tracks.size} 首歌曲`
-      );
+      Logger.info("LikedSongsManager", `✅ 重新加载完成！共 ${this.cache.tracks.size} 首歌曲`);
     } catch (error) {
       Logger.error("LikedSongsManager", "重新加载失败", error);
       throw error;
@@ -379,10 +354,7 @@ export class LikedSongsManager {
         return;
       }
 
-      Logger.debug(
-        "LikedSongsManager",
-        `从 offset=${offset} 继续加载，目标总数=${total}`
-      );
+      Logger.debug("LikedSongsManager", `从 offset=${offset} 继续加载，目标总数=${total}`);
 
       // 循环加载直到全部完成
       while (offset < total) {
@@ -396,16 +368,11 @@ export class LikedSongsManager {
         offset += batch.items.length;
 
         // 输出加载进度
-        Logger.debug(
-          "LikedSongsManager",
-          `加载进度: ${offset}/${total} (${((offset / total) * 100).toFixed(1)}%)`
-        );
+        Logger.debug("LikedSongsManager", `加载进度: ${offset}/${total} (${((offset / total) * 100).toFixed(1)}%)`);
 
         // 间隔配置的延迟时间，避免频繁请求触发限流
         if (offset < total) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, LIKED_SONGS_API_CONFIG.performance.batchLoadDelay)
-          );
+          await new Promise((resolve) => setTimeout(resolve, LIKED_SONGS_API_CONFIG.performance.batchLoadDelay));
         }
       }
 
@@ -413,10 +380,7 @@ export class LikedSongsManager {
       this.cache.isFullyLoaded = true;
       this.cache.lastUpdated = Date.now();
 
-      Logger.info(
-        "LikedSongsManager",
-        `全部数据加载完成: ${this.cache.tracks.size} 首`
-      );
+      Logger.info("LikedSongsManager", `全部数据加载完成: ${this.cache.tracks.size} 首`);
     } catch (error) {
       Logger.error("LikedSongsManager", "加载全部数据失败", error);
       throw error;
@@ -447,10 +411,7 @@ export class LikedSongsManager {
 
     try {
       // 获取最新的首批数据
-      const firstBatch = await this.fetchLikedSongs(
-        0,
-        LIKED_SONGS_API_CONFIG.pagination.defaultLimit
-      );
+      const firstBatch = await this.fetchLikedSongs(0, LIKED_SONGS_API_CONFIG.pagination.defaultLimit);
 
       const currentTotal = this.cache.total;
       const newTotal = firstBatch.total;
@@ -474,17 +435,11 @@ export class LikedSongsManager {
 
       // 处理歌曲数量增加的情况
       const addedCount = newTotal - currentTotal;
-      Logger.info(
-        "LikedSongsManager",
-        `检测到新增歌曲: ${addedCount} 首`
-      );
+      Logger.info("LikedSongsManager", `检测到新增歌曲: ${addedCount} 首`);
 
       // 如果新增数量超过首批大小，触发完整加载
       if (addedCount > LIKED_SONGS_API_CONFIG.pagination.defaultLimit) {
-        Logger.info(
-          "LikedSongsManager",
-          `新增歌曲较多 (${addedCount} 首)，触发完整加载以确保数据完整性...`
-        );
+        Logger.info("LikedSongsManager", `新增歌曲较多 (${addedCount} 首)，触发完整加载以确保数据完整性...`);
         this.cache.total = newTotal;
         await this.loadAllData();
         return;
@@ -510,10 +465,7 @@ export class LikedSongsManager {
       this.cache.lastUpdated = Date.now();
 
       if (newTracks.length > 0) {
-        Logger.info(
-          "LikedSongsManager",
-          `增量更新完成: 新增 ${newTracks.length} 首`
-        );
+        Logger.info("LikedSongsManager", `增量更新完成: 新增 ${newTracks.length} 首`);
 
         // 开发模式下显示新增歌曲列表
         if (DEBUG_MODE) {
@@ -575,10 +527,7 @@ export class LikedSongsManager {
 
     const interval = LIKED_SONGS_API_CONFIG.cache.updateInterval;
 
-    Logger.debug(
-      "LikedSongsManager",
-      `启动定时轮询（间隔: ${interval / 1000} 秒）`
-    );
+    Logger.debug("LikedSongsManager", `启动定时轮询（间隔: ${interval / 1000} 秒）`);
 
     this.pollingIntervalId = setInterval(async () => {
       Logger.debug("LikedSongsManager", "定时轮询触发");
@@ -646,10 +595,7 @@ export class LikedSongsManager {
     //
     // Platform.LibraryAPI 中也未找到相关的事件监听接口
 
-    Logger.debug(
-      "LikedSongsManager",
-      "⚠️ 暂无可用的事件监听 API，仅使用定时轮询"
-    );
+    Logger.debug("LikedSongsManager", "⚠️ 暂无可用的事件监听 API，仅使用定时轮询");
 
     // 注意：以下是实验性的事件监听代码，已被注释掉
     // 原因：songchange 事件无法直接检测喜欢操作，可靠性不足
@@ -680,17 +626,11 @@ export class LikedSongsManager {
   private static initUpdateMechanism(): void {
     // 防止重复初始化
     if (this.isUpdateMechanismInitialized) {
-      Logger.info(
-        "LikedSongsManager",
-        "⚠️ 更新机制已初始化，跳过重复初始化"
-      );
+      Logger.info("LikedSongsManager", "⚠️ 更新机制已初始化，跳过重复初始化");
       return;
     }
 
-    Logger.info(
-      "LikedSongsManager",
-      "初始化更新机制（事件监听 + 定时轮询）"
-    );
+    Logger.info("LikedSongsManager", "初始化更新机制（事件监听 + 定时轮询）");
 
     // 1. 启动定时轮询（基础保障）
     this.startPolling();
@@ -699,11 +639,7 @@ export class LikedSongsManager {
     try {
       this.setupEventListeners();
     } catch (error) {
-      Logger.error(
-        "LikedSongsManager",
-        "事件监听初始化失败，仅使用定时轮询",
-        error
-      );
+      Logger.error("LikedSongsManager", "事件监听初始化失败，仅使用定时轮询", error);
     }
 
     // 标记为已初始化
