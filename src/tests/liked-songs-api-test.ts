@@ -36,20 +36,14 @@ export class LikedSongsAPITest {
    * 执行完整的 API 对比测试
    */
   static async runFullTest() {
-    Logger.info(
-      "LikedSongsAPITest",
-      "========== 开始 LikedSongs API 对比测试 =========="
-    );
+    Logger.info("LikedSongsAPITest", "========== 开始 LikedSongs API 对比测试 ==========");
 
     const results = [];
     const rawDataMap = new Map<string, any>(); // 存储原始数据
 
     // 使用枚举类型迭代所有 API 进行测试
     for (const [apiName, testFunction] of this.apiTestFunctions.entries()) {
-      Logger.info(
-        "LikedSongsAPITest",
-        `\n========== 测试 ${apiName} ==========`
-      );
+      Logger.info("LikedSongsAPITest", `\n========== 测试 ${apiName} ==========`);
 
       const result = await APITester.testAPI(apiName, async () => {
         const data = await testFunction();
@@ -80,10 +74,10 @@ export class LikedSongsAPITest {
    * API A: sp://core-collection/unstable/@/list/tracks
    */
   private static async testCoreCollectionAPI() {
-    const response = await Spicetify.CosmosAsync.get(
-      "sp://core-collection/unstable/@/list/tracks",
-      { limit: 50, offset: 0 }
-    );
+    const response = await Spicetify.CosmosAsync.get("sp://core-collection/unstable/@/list/tracks", {
+      limit: 50,
+      offset: 0,
+    });
     return response;
   }
 
@@ -106,10 +100,7 @@ export class LikedSongsAPITest {
    * API C: Spotify Web API (通过 CosmosAsync 调用)
    */
   private static async testSpotifyWebAPI() {
-    const response = await Spicetify.CosmosAsync.get(
-      "https://api.spotify.com/v1/me/tracks",
-      { limit: 50, offset: 0 }
-    );
+    const response = await Spicetify.CosmosAsync.get("https://api.spotify.com/v1/me/tracks", { limit: 50, offset: 0 });
     return response;
   }
 
@@ -128,11 +119,7 @@ export class LikedSongsAPITest {
       return 0;
     }
 
-    const successRate = await APITester.stabilityTest(
-      apiName,
-      fetchFn,
-      TEST_CONFIG.DEFAULT_STABILITY_TEST_TIMES
-    );
+    const successRate = await APITester.stabilityTest(apiName, fetchFn, TEST_CONFIG.DEFAULT_STABILITY_TEST_TIMES);
     return successRate;
   }
 
@@ -158,17 +145,11 @@ export class LikedSongsAPITest {
 
     // 如果有 items 数组，输出前 2 条数据的结构
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      Logger.info(
-        "LikedSongsAPITest",
-        `\n📦 数据项结构 (共 ${data.items.length} 条，展示前 2 条):`
-      );
+      Logger.info("LikedSongsAPITest", `\n📦 数据项结构 (共 ${data.items.length} 条，展示前 2 条):`);
       const sampleItems = data.items.slice(0, 2);
       console.log(JSON.stringify(sampleItems, null, 2));
     } else if (Array.isArray(data) && data.length > 0) {
-      Logger.info(
-        "LikedSongsAPITest",
-        `\n📦 数据项结构 (共 ${data.length} 条，展示前 2 条):`
-      );
+      Logger.info("LikedSongsAPITest", `\n📦 数据项结构 (共 ${data.length} 条，展示前 2 条):`);
       const sampleItems = data.slice(0, 2);
       console.log(JSON.stringify(sampleItems, null, 2));
     }
@@ -192,11 +173,6 @@ export class LikedSongsAPITest {
 
     Logger.info("LikedSongsAPITest", "========== 推荐方案 ==========");
     Logger.info("LikedSongsAPITest", `🏆 推荐使用: ${successfulAPIs[0].name}`);
-    Logger.info(
-      "LikedSongsAPITest",
-      `   原因: 响应最快 (${successfulAPIs[0].responseTime.toFixed(
-        2
-      )}ms), 数据完整`
-    );
+    Logger.info("LikedSongsAPITest", `   原因: 响应最快 (${successfulAPIs[0].responseTime.toFixed(2)}ms), 数据完整`);
   }
 }
