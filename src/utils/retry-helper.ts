@@ -1,7 +1,7 @@
 /**
  * RetryHelper 重试工具类
  *
- * 提供通用的重试机制，用于处理网络错误、API 失败等异常情况
+ * 提供通用的重试机制，包含指数退避策略，用于处理网络错误、API 失败等异常情况
  */
 
 import { Logger } from "./logger";
@@ -12,10 +12,12 @@ import { Logger } from "./logger";
 interface RetryOptions {
   /** 最大重试次数，默认 3 */
   maxRetries?: number;
-  /** 重试延迟（毫秒），默认 1000 */
+  /** 初始重试延迟（毫秒），默认 1000 */
   delay?: number;
+  /** 是否启用指数退避策略，默认 true */
+  useExponentialBackoff?: boolean;
   /** 重试回调函数 */
-  onRetry?: (attempt: number, error: any) => void;
+  onRetry?: (attempt: number, error: unknown) => void;
 }
 
 export class RetryHelper {
@@ -35,21 +37,33 @@ export class RetryHelper {
    * @returns 函数执行结果
    *
    * @example
+   * // 使用指数退避策略（默认）
    * const data = await RetryHelper.withRetry(
    *   async () => await fetchData(),
    *   {
    *     maxRetries: 3,
-   *     delay: 2000,
+   *     delay: 1000,
    *     onRetry: (attempt, error) => {
    *       console.log(`重试第 ${attempt} 次`, error);
    *     }
    *   }
    * );
+   *
+   * @example
+   * // 使用固定延迟
+   * const data = await RetryHelper.withRetry(
+   *   async () => await fetchData(),
+   *   {
+   *     maxRetries: 3,
+   *     delay: 2000,
+   *     useExponentialBackoff: false
+   *   }
+   * );
    */
   static async withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
-    const { maxRetries = 3, delay = 1000, onRetry } = options;
+    const { maxRetries = 3, delay = 1000, useExponentialBackoff = true, onRetry } = options;
 
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -58,11 +72,17 @@ export class RetryHelper {
         lastError = error;
 
         if (attempt < maxRetries) {
-          Logger.warn("RetryHelper", `操作失败,${delay}ms 后重试 (${attempt}/${maxRetries})`);
+          // 计算实际延迟时间：指数退避或固定延迟
+          const actualDelay = useExponentialBackoff ? delay * Math.pow(2, attempt - 1) : delay;
+
+          Logger.warn(
+            "RetryHelper",
+            `操作失败，${actualDelay}ms 后重试 (${attempt}/${maxRetries})`
+          );
 
           onRetry?.(attempt, error);
 
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, actualDelay));
         }
       }
     }
