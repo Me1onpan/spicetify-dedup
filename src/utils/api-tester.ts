@@ -37,10 +37,7 @@ export class APITester {
   /**
    * 测试单个 API 端点
    */
-  static async testAPI(
-    name: string,
-    fetchFn: () => Promise<any>
-  ): Promise<APITestResult> {
+  static async testAPI(name: string, fetchFn: () => Promise<any>): Promise<APITestResult> {
     const startTime = performance.now();
     const result: APITestResult = {
       name,
@@ -64,9 +61,7 @@ export class APITester {
 
       // 检查数据结构
       if (data) {
-        result.dataCount = Array.isArray(data)
-          ? data.length
-          : data.items?.length || 0;
+        result.dataCount = Array.isArray(data) ? data.length : data.items?.length || 0;
 
         // 检查 addedAt 字段并记录详细路径
         const addedAtInfo = this.checkAddedAtField(data);
@@ -90,8 +85,7 @@ export class APITester {
     } catch (error) {
       const endTime = performance.now();
       result.responseTime = endTime - startTime;
-      result.errorMessage =
-        error instanceof Error ? error.message : String(error);
+      result.errorMessage = error instanceof Error ? error.message : String(error);
       Logger.error("APITester", `${name} 测试失败`, error);
     }
 
@@ -116,19 +110,14 @@ export class APITester {
         await fetchFn();
         successCount++;
         // 优化：缩短间隔时间从 500ms 到 200ms，提升测试速度 60%
-        await new Promise((resolve) =>
-          setTimeout(resolve, TEST_CONFIG.TEST_INTERVAL_MS)
-        );
+        await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.TEST_INTERVAL_MS));
       } catch (error) {
         Logger.error("APITester", `第 ${i + 1} 次请求失败`, error);
       }
     }
 
     const successRate = (successCount / times) * 100;
-    Logger.info(
-      "APITester",
-      `${name} 稳定性: ${successRate.toFixed(1)}% (${successCount}/${times})`
-    );
+    Logger.info("APITester", `${name} 稳定性: ${successRate.toFixed(1)}% (${successCount}/${times})`);
 
     return successRate;
   }
@@ -191,8 +180,7 @@ export class APITester {
     if ("total" in data) foundFields.push("total");
     if ("totalCount" in data) foundFields.push("totalCount");
     if ("totalLength" in data) foundFields.push("totalLength");
-    if ("unfilteredTotalLength" in data)
-      foundFields.push("unfilteredTotalLength");
+    if ("unfilteredTotalLength" in data) foundFields.push("unfilteredTotalLength");
 
     // 检查偏移量和限制字段
     if ("offset" in data) foundFields.push("offset");
@@ -204,13 +192,9 @@ export class APITester {
 
     // 判断是否支持分页
     const hasTotalField = foundFields.some((f) =>
-      ["total", "totalCount", "totalLength", "unfilteredTotalLength"].includes(
-        f
-      )
+      ["total", "totalCount", "totalLength", "unfilteredTotalLength"].includes(f)
     );
-    const hasPaginationControl = foundFields.some((f) =>
-      ["offset", "limit", "next", "previous"].includes(f)
-    );
+    const hasPaginationControl = foundFields.some((f) => ["offset", "limit", "next", "previous"].includes(f));
 
     const supported = hasTotalField && hasPaginationControl;
 

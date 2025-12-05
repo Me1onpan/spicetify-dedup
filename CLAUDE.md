@@ -321,9 +321,7 @@ Spicetify.Player.addEventListener("songchange", (event) => {
 
 ```typescript
 const playlistUri = "spotify:playlist:xxxxx";
-const data = await Spicetify.CosmosAsync.get(
-  `sp://core-playlist/v1/playlist/${playlistUri}`
-);
+const data = await Spicetify.CosmosAsync.get(`sp://core-playlist/v1/playlist/${playlistUri}`);
 ```
 
 #### 显示通知
