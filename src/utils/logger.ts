@@ -11,33 +11,47 @@ export class Logger {
   private static readonly PREFIX = "[Spicetify-Dedup]";
 
   /**
+   * 解析消息（支持字符串或函数）
+   * 函数形式用于延迟计算，避免不必要的字符串拼接
+   */
+  private static resolveMessage(message: string | (() => string)): string {
+    return typeof message === "function" ? message() : message;
+  }
+
+  /**
    * 开发模式日志（仅在 DEBUG_MODE 为 true 时输出）
    */
-  static debug(module: string, message: string, ...args: any[]) {
+  static debug(module: string, message: string | (() => string), ...args: any[]) {
     if (DEBUG_MODE) {
-      console.log(`${this.PREFIX} [DEBUG] [${module}] ${message}`, ...args);
+      console.log(`${this.PREFIX} [DEBUG] [${module}] ${this.resolveMessage(message)}`, ...args);
     }
   }
 
   /**
-   * 信息日志（始终输出）
+   * 信息日志（仅在 DEBUG_MODE 为 true 时输出）
    */
-  static info(module: string, message: string, ...args: any[]) {
-    console.info(`${this.PREFIX} [INFO] [${module}] ${message}`, ...args);
+  static info(module: string, message: string | (() => string), ...args: any[]) {
+    if (DEBUG_MODE) {
+      console.info(`${this.PREFIX} [INFO] [${module}] ${this.resolveMessage(message)}`, ...args);
+    }
   }
 
   /**
-   * 警告日志（始终输出）
+   * 警告日志（仅在 DEBUG_MODE 为 true 时输出）
    */
-  static warn(module: string, message: string, ...args: any[]) {
-    console.warn(`${this.PREFIX} [WARN] [${module}] ${message}`, ...args);
+  static warn(module: string, message: string | (() => string), ...args: any[]) {
+    if (DEBUG_MODE) {
+      console.warn(`${this.PREFIX} [WARN] [${module}] ${this.resolveMessage(message)}`, ...args);
+    }
   }
 
   /**
-   * 错误日志（始终输出）
+   * 错误日志（仅在 DEBUG_MODE 为 true 时输出）
    */
-  static error(module: string, message: string, error?: any) {
-    console.error(`${this.PREFIX} [ERROR] [${module}] ${message}`, error);
+  static error(module: string, message: string | (() => string), error?: any) {
+    if (DEBUG_MODE) {
+      console.error(`${this.PREFIX} [ERROR] [${module}] ${this.resolveMessage(message)}`, error);
+    }
   }
 
   /**
