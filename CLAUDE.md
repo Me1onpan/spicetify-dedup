@@ -4,6 +4,64 @@
 
 ## 变更记录 (Changelog)
 
+### 2025-12-05 18:30
+
+- ✅ 完成当前播放歌曲检测功能的优化与文档（阶段 4）
+- ⚡ 性能优化：
+  - 修改 Logger 系统，所有日志级别都受 DEBUG_MODE 控制
+  - 优化字符串拼接，使用函数形式延迟计算（避免生产模式下的无用开销）
+  - 优化涉及文件：`logger.ts`、`current-track-detector.ts`、`app.tsx`、`liked-songs-manager.ts`、`api-tester.ts`
+  - 预计性能提升：生产模式下减少 100% 的日志开销
+- 📚 文档完善：
+  - 创建使用指南：`.claude/docs/current-track-detector-usage.md`
+  - 包含快速开始、基础用法、进阶用法、API 参考、常见问题、最佳实践
+  - 提供 3 个完整示例：基础使用、查重集成、多回调函数
+- 🎯 优化细节：
+  - Logger 新增 `resolveMessage()` 方法，支持 `string | (() => string)` 类型
+  - 所有高频日志调用改为函数形式，延迟计算字符串拼接
+  - 保持 Player.data 访问不变（必须获取最新数据）
+- 📝 文档更新：
+  - 更新 CLAUDE.md 变更记录
+  - 更新规划文档标记阶段 4 完成
+
+### 2025-12-05 16:00
+
+- ✅ 完成当前播放歌曲检测功能的集成与测试（阶段 3）
+- 🎯 核心功能实现：
+  - 集成 CurrentTrackDetector 到 app.tsx
+  - 实现歌曲变更回调机制
+  - DEBUG_MODE 下暴露到全局对象
+- 🔧 问题修复：
+  - 修复初始化时回调未触发问题
+  - 添加 `forceCheckIgnoreCache()` 方法，忽略 URI 去重缓存
+  - 确保扩展启动时已播放的歌曲能触发回调
+- 🧪 测试验证：
+  - 完成 5 个核心测试用例（通过率 100%）
+  - 测试报告：`.claude/test/current-track-detector-test-report.md`
+  - 验证场景：正常切歌、扩展重载、跨设备播放、暂停/恢复、手动触发
+- 📁 新增文件：
+  - `src/detectors/current-track-detector.ts` - 检测器实现
+  - `src/types/current-track.ts` - 类型定义
+  - `.claude/test/current-track-detector-test-report.md` - 测试报告
+- 📝 文档更新：
+  - 更新规划文档验收标准
+  - 记录阶段 3 完成情况
+
+### 2025-12-05 早些时候
+
+- ✅ 完成当前播放歌曲检测功能的技术调研与方案设计（阶段 1）
+- 🔬 完成 Spicetify Player API 实践调研
+  - 创建测试代码：`src/tests/player-api-exploration.ts`
+  - 测试报告：`.claude/research/player-api-test-results.md`
+- 🏗️ 完成 CurrentTrackDetector 架构设计
+  - 设计文档：`.claude/design/current-track-detector-design.md`
+  - 包含类结构、时序图、错误处理策略、边界情况处理方案
+- 🎯 关键设计决策：
+  - 采用立即检测策略（移除延迟复查）
+  - 使用 300ms 防抖 + URI 去重机制
+  - 主要监听 songchange 事件
+  - 暂不实现轮询备份（预留接口）
+
 ### 2025-12-03 15:59:23
 
 - ✅ 完成 API 端点测试与选型（阶段 1.1-1.4）
