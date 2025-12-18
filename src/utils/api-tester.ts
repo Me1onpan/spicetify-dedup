@@ -117,7 +117,9 @@ export class APITester {
     }
 
     const successRate = (successCount / times) * 100;
-    Logger.info("APITester", `${name} 稳定性: ${successRate.toFixed(1)}% (${successCount}/${times})`);
+    Logger.info("APITester", () =>
+      `${name} 稳定性: ${successRate.toFixed(1)}% (${successCount}/${times})`
+    );
 
     return successRate;
   }

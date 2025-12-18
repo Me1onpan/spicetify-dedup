@@ -109,7 +109,9 @@ export class LikedSongsManager {
       // 启动更新机制（阶段 4 实现）
       this.initUpdateMechanism();
 
-      Logger.info("LikedSongsManager", `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲`);
+      Logger.info("LikedSongsManager", () =>
+        `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲`
+      );
 
       // 生产模式下显示通知
       if (!DEBUG_MODE) {
@@ -202,7 +204,9 @@ export class LikedSongsManager {
           return formattedResponse;
         } catch (error) {
           const duration = performance.now() - startTime;
-          Logger.error("LikedSongsManager", `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`, error);
+          Logger.error("LikedSongsManager", () =>
+            `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`, error
+          );
           throw error;
         }
       },
@@ -251,7 +255,9 @@ export class LikedSongsManager {
       // 重新初始化（加载首批数据）
       await this.loadInitialData();
 
-      Logger.info("LikedSongsManager", `重新初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首`);
+      Logger.info("LikedSongsManager", () =>
+        `重新初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首`
+      );
 
       // 加载全部数据
       await this.loadAllData();
