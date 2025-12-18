@@ -237,23 +237,11 @@ export class CurrentTrackDetector {
       return;
     }
 
-    // 保存当前的 lastTrackUri
-    const previousUri = this.lastTrackUri;
-
     // 临时清空 lastTrackUri，确保 checkCurrentTrack 能够触发回调
     this.lastTrackUri = null;
 
     // 触发检测
     this.checkCurrentTrack("manual-ignore-cache");
-
-    // 如果检测失败（lastTrackUri 仍然为 null），恢复之前的值
-    if (!this.lastTrackUri) {
-      this.lastTrackUri = previousUri;
-      Logger.debug(
-        "CurrentTrackDetector",
-        "检测失败，恢复之前的 lastTrackUri"
-      );
-    }
   }
 
   /**
@@ -444,8 +432,9 @@ export class CurrentTrackDetector {
   /**
    * 启动轮询检测（预留接口，默认不启用）
    *
-   * 注意：此方法为预留接口，当前版本不建议使用
-   * 仅在 songchange 事件不可靠时作为降级方案
+   * @internal 此方法为内部预留接口，当前版本不建议使用。
+   * 仅在 songchange 事件不可靠时作为降级方案。
+   * 未来版本可能会移除或更改此方法。
    *
    * @param intervalMs - 轮询间隔（毫秒）
    */

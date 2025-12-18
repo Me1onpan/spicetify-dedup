@@ -16,10 +16,8 @@ async function main() {
     // 初始化 LikedSongs 管理器
     await LikedSongsManager.initialize();
 
-    // 初始化 CurrentTrackDetector
-    await CurrentTrackDetector.initialize();
-
-    // 注册歌曲变更回调（暂时只输出日志）
+    // 先注册歌曲变更回调，再初始化检测器
+    // 这样 initialize() 内部的检测就能正确触发回调，无需额外调用
     CurrentTrackDetector.onTrackChange((track) => {
       Logger.info('App', () =>
         `🎵 歌曲切换: ${track.name} - ${track.artists?.map(a => a.name).join(', ')}`
@@ -27,14 +25,8 @@ async function main() {
       // TODO: 在此处添加查重逻辑
     });
 
-    // 如果初始化时检测到歌曲，手动触发一次回调
-    // 这样可以确保扩展启动时已在播放的歌曲也能触发回调
-    // 使用 forceCheckIgnoreCache() 忽略 URI 去重，确保回调能够触发
-    const currentTrack = CurrentTrackDetector.getCurrentTrack();
-    if (currentTrack) {
-      Logger.info('App', '检测到初始化时有歌曲在播放，手动触发回调');
-      CurrentTrackDetector.forceCheckIgnoreCache();
-    }
+    // 初始化 CurrentTrackDetector（内部会检测当前播放歌曲并触发回调）
+    await CurrentTrackDetector.initialize();
 
     // 开发模式下输出统计信息
     if (DEBUG_MODE) {
