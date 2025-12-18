@@ -37,21 +37,17 @@ export class Logger {
   }
 
   /**
-   * 警告日志（仅在 DEBUG_MODE 为 true 时输出）
+   * 警告日志（始终输出，用于提示潜在问题）
    */
   static warn(module: string, message: string | (() => string), ...args: any[]) {
-    if (DEBUG_MODE) {
-      console.warn(`${this.PREFIX} [WARN] [${module}] ${this.resolveMessage(message)}`, ...args);
-    }
+    console.warn(`${this.PREFIX} [WARN] [${module}] ${this.resolveMessage(message)}`, ...args);
   }
 
   /**
-   * 错误日志（仅在 DEBUG_MODE 为 true 时输出）
+   * 错误日志（始终输出，用于诊断生产问题）
    */
   static error(module: string, message: string | (() => string), error?: any) {
-    if (DEBUG_MODE) {
-      console.error(`${this.PREFIX} [ERROR] [${module}] ${this.resolveMessage(message)}`, error);
-    }
+    console.error(`${this.PREFIX} [ERROR] [${module}] ${this.resolveMessage(message)}`, error);
   }
 
   /**

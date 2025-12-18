@@ -204,8 +204,10 @@ export class LikedSongsManager {
           return formattedResponse;
         } catch (error) {
           const duration = performance.now() - startTime;
-          Logger.error("LikedSongsManager", () =>
-            `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`, error
+          Logger.error(
+            "LikedSongsManager",
+            () => `获取数据失败 (offset=${offset}, 耗时=${duration.toFixed(2)}ms)`,
+            error
           );
           throw error;
         }
