@@ -3,6 +3,7 @@ import { DEBUG_MODE, Logger } from './utils/logger';
 import { TEST_CONFIG } from './utils/api-tester'; // 保留用于可选的 API 测试
 import { LikedSongsManager } from './managers/liked-songs-manager';
 import { CurrentTrackDetector } from './detectors/current-track-detector';
+import { DuplicateDetector, MatchLevel } from './detectors/duplicate-detector';
 
 async function main() {
   // 等待 Spicetify 加载
@@ -22,7 +23,32 @@ async function main() {
       Logger.info('App', () =>
         `🎵 歌曲切换: ${track.name} - ${track.artists?.map(a => a.name).join(', ')}`
       );
-      // TODO: 在此处添加查重逻辑
+
+      // 查重检测
+      const result = DuplicateDetector.check(track);
+
+      // 根据匹配级别显示通知
+      switch (result.level) {
+        case MatchLevel.EXACT:
+          Spicetify.showNotification('💚 这首歌已在喜欢列表中');
+          Logger.info('App', () =>
+            `💚 发现重复歌曲: ${track.name} - ${track.artists?.map(a => a.name).join(', ')}`
+          );
+          break;
+        case MatchLevel.STRONG:
+          Spicetify.showNotification(`💛 发现相似版本: ${result.matchedTrack?.name}`);
+          Logger.info('App', () =>
+            `💛 发现相似版本: ${result.matchedTrack?.name}`
+          );
+          break;
+        case MatchLevel.WEAK:
+          Spicetify.showNotification(`💛 可能相似: ${result.matchedTrack?.name}`);
+          Logger.info('App', () =>
+            `💛 可能相似: ${result.matchedTrack?.name}`
+          );
+          break;
+        // NONE: 不显示通知
+      }
     });
 
     // 初始化 CurrentTrackDetector（内部会检测当前播放歌曲并触发回调）
