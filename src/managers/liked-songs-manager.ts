@@ -109,14 +109,22 @@ export class LikedSongsManager {
       // 启动更新机制（阶段 4 实现）
       this.initUpdateMechanism();
 
-      Logger.info("LikedSongsManager", () =>
-        `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲`
-      );
+      this.isLoading = false;
 
-      // 生产模式下显示通知
-      if (!DEBUG_MODE) {
-        Spicetify.showNotification(`LikedSongs 已加载 (${this.cache.total} 首)`);
-      }
+      // 后台加载全部数据（不阻塞初始化）
+      this.loadAllData()
+        .then(() => {
+          if (!DEBUG_MODE) {
+            Spicetify.showNotification(`LikedSongs 全部加载完成 (${this.cache.tracks.size} 首)`);
+          }
+        })
+        .catch((error) => {
+          Logger.error("LikedSongsManager", "后台加载全部数据失败", error);
+        });
+
+      Logger.info("LikedSongsManager", () =>
+        `初始化完成，已加载 ${this.cache.tracks.size}/${this.cache.total} 首歌曲，后台正在加载全部数据...`
+      );
     } catch (error) {
       Logger.error("LikedSongsManager", "初始化失败", error);
       throw error;
@@ -415,6 +423,12 @@ export class LikedSongsManager {
    * ```
    */
   static async updateIncremental(): Promise<void> {
+    // 如果数据尚未完全加载，跳过增量更新
+    if (!this.cache.isFullyLoaded) {
+      Logger.debug("LikedSongsManager", "数据尚未完全加载，跳过增量更新");
+      return;
+    }
+
     Logger.debug("LikedSongsManager", "开始增量更新...");
 
     try {
