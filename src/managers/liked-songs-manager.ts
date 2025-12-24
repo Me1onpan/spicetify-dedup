@@ -330,6 +330,17 @@ export class LikedSongsManager {
   }
 
   /**
+   * 获取缓存对象（只读）
+   *
+   * 用于 DuplicateDetector 等模块访问缓存数据
+   *
+   * @returns 缓存对象的只读引用
+   */
+  static getCache(): Readonly<LikedSongsCache> {
+    return this.cache;
+  }
+
+  /**
    * 加载全部数据（分页加载）
    *
    * 从当前缓存大小继续加载，直到加载完所有 LikedSongs
